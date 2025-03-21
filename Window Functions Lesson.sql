@@ -75,9 +75,9 @@ SELECT
 	, ps.AdmittedDate
 	, ps.Tariff
 	, COUNT(*) OVER () AS TotalCount
---	, COUNT(*) OVER (PARTITION BY ps.Hospital) AS HospitalCount -- create a window over those rows with the same hospital as the current row
---	, COUNT(*) OVER (PARTITION BY ps.Ward) AS WardCount
---	, COUNT(*) OVER (PARTITION BY ps.Hospital , ps.Ward) AS HospitalWardCount
+	, COUNT(*) OVER (PARTITION BY ps.Hospital) AS HospitalCount -- create a window over those rows with the same hospital as the current row
+	, COUNT(*) OVER (PARTITION BY ps.Ward) AS WardCount
+	, COUNT(*) OVER (PARTITION BY ps.Hospital , ps.Ward) AS HospitalWardCount
 FROM
 	PatientStay ps
 ORDER BY
@@ -92,9 +92,9 @@ SELECT
 	, ps.Tariff
 	, ps.Ward
 	, SUM(ps.Tariff) OVER () AS TotalTariff
---	, SUM(ps.Tariff) OVER (PARTITION BY ps.Ward) AS WardTariff
---	, 100.0 * ps.Tariff / SUM(ps.Tariff) OVER () AS PctOfAllTariff
---	, 100.0 * ps.Tariff / SUM(ps.Tariff) OVER (PARTITION BY ps.Ward) AS PctOfWardTariff
+	, SUM(ps.Tariff) OVER (PARTITION BY ps.Ward) AS WardTariff
+	, 100.0 * ps.Tariff / SUM(ps.Tariff) OVER () AS PctOfAllTariff
+	, 100.0 * ps.Tariff / SUM(ps.Tariff) OVER (PARTITION BY ps.Ward) AS PctOfWardTariff
 FROM
 	PatientStay ps
 ORDER BY
@@ -113,14 +113,15 @@ SELECT
 	, ps.Ward
 	, ps.AdmittedDate
 	, ps.Tariff
-	, ROW_NUMBER() OVER (ORDER BY ps.PatientId) AS PatientIndex
+	, ROW_NUMBER() OVER (ORDER BY ps.tariff desc) AS PatientIndex
 --	, ROW_NUMBER() OVER (PARTITION BY ps.Hospital ORDER BY ps.PatientId) AS PatientByHospitalIndex
 --  ,COUNT(*) OVER (PARTITION BY ps.Hospital order by ps.PatientId)  as PatientByHospitalIndexAlt -- An alternative way of indexing
 FROM
 	PatientStay ps
 ORDER BY
-	ps.Hospital
-	, ps.PatientId;
+	--ps.Hospital,
+	-- ps.PatientId
+	ps.Tariff DESC
 
 /*
 Compare ROW_NUMBER(), RANK() and DENSE_RANK() where there are ties
@@ -134,9 +135,10 @@ SELECT
 	ps.PatientId
 	, ps.Tariff
 	, ROW_NUMBER() OVER (ORDER BY ps.Tariff DESC) AS PatientRowIndex
---	, RANK() OVER (	ORDER BY ps.Tariff DESC) AS PatientRank
---	, DENSE_RANK() OVER (ORDER BY ps.Tariff DESC) AS PatientDenseRank
---	, NTILE(10) OVER (ORDER BY ps.Tariff DESC) AS PatientIdDecile
+	, RANK() OVER (	ORDER BY ps.Tariff DESC) AS PatientRank
+	, DENSE_RANK() OVER (ORDER BY ps.Tariff DESC) AS PatientDenseRank
+	, NTILE(10) OVER (ORDER BY ps.Tariff DESC) AS PatientIdDecile
+	, NTILE(4) OVER (ORDER BY ps.Tariff DESC) AS PatientIdQuartile
 FROM
 	PatientStay ps
 ORDER BY
@@ -146,10 +148,10 @@ ORDER BY
 SELECT
 	ps.AdmittedDate
 	, ps.Tariff
-	-- , ROW_NUMBER() OVER (ORDER BY ps.AdmittedDate) AS RowIndex
-	-- , SUM(ps.Tariff) OVER (ORDER BY ps.AdmittedDate) AS RunningTariff
-	-- , ROW_NUMBER() OVER (PARTITION BY DATENAME(MONTH, ps.AdmittedDate) ORDER BY ps.AdmittedDate) AS MonthIndex
-	-- , SUM(ps.Tariff) OVER (PARTITION BY DATENAME(MONTH, ps.AdmittedDate) ORDER BY ps.AdmittedDate) AS MonthToDateTariff
+	, ROW_NUMBER() OVER (ORDER BY ps.AdmittedDate) AS RowIndex
+	, SUM(ps.Tariff) OVER (ORDER BY ps.AdmittedDate) AS RunningTariff
+	, ROW_NUMBER() OVER (PARTITION BY DATENAME(MONTH, ps.AdmittedDate) ORDER BY ps.AdmittedDate) AS MonthIndex
+	, SUM(ps.Tariff) OVER (PARTITION BY DATENAME(MONTH, ps.AdmittedDate) ORDER BY ps.AdmittedDate) AS MonthToDateTariff
 FROM
 	PatientStay ps
 WHERE
@@ -195,8 +197,8 @@ SELECT
 	ps.AdmittedDate
 	, ps.Tariff
 	, LEAD(ps.Tariff) OVER (ORDER BY ps.AdmittedDate) AS NextDayTariff 
---	, LAG(ps.Tariff) OVER (ORDER BY ps.AdmittedDate) AS PreviousDayTariff
---	, ps.Tariff - LAG(ps.Tariff) OVER (ORDER BY ps.AdmittedDate) AS ChangeOnPreviousDate
+	, LAG(ps.Tariff) OVER (ORDER BY ps.AdmittedDate) AS PreviousDayTariff
+    , ps.Tariff - LAG(ps.Tariff) OVER (ORDER BY ps.AdmittedDate) AS ChangeOnPreviousDate
 FROM
 	PatientStay ps
 WHERE
